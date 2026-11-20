@@ -11,7 +11,7 @@ import logging
 from aiogram import Bot, F, Router
 from aiogram.enums import ContentType
 from aiogram.exceptions import TelegramBadRequest
-from aiogram.filters import CommandObject, CommandStart
+from aiogram.filters import Command, CommandObject, CommandStart
 from aiogram.types import (
     CallbackQuery,
     InlineKeyboardButton,
@@ -26,6 +26,7 @@ import config
 import database as db
 from handlers.admin_handlers import receipt_review_kb
 from services.access import deliver_access
+from services.commands import ensure_admin_commands
 from services.menus import show_menu
 from services.telegram_service import (
     SUPPORTED_CONTENT_TYPES,
@@ -215,11 +216,73 @@ async def cmd_start(message: Message, bot: Bot, command: CommandObject) -> None:
     except Exception:
         log.exception("No se pudo crear/recuperar el tema del miembro %s", user.id)
 
+    await ensure_admin_commands(bot, user.id)
     payload = (command.args or "").strip()
     if payload and config.DEEPLINK_RE.match(payload):
         await handle_deep_link(message, bot, payload)
         return
     await message.answer(config.t(config.DEFAULT_LANG, "choose_lang"), reply_markup=language_kb())
+
+
+async def _register(message: Message, bot: Bot) -> None:
+    """Registra al miembro si usa un comando sin haber pasado por /start y sale del modo comprobante."""
+    user = message.from_user
+    await db.upsert_user(user.id, user.full_name, user.username, initial_lang=detect_lang(user.language_code))
+    await db.set_receipt_mode(user.id, None)
+    try:
+        await get_or_create_topic(bot, Contact.from_user(user))
+    except Exception:
+        log.exception("No se pudo crear/recuperar el tema del miembro %s", user.id)
+
+
+@router.message(Command(*config.MEMBER_COMMAND_MENUS))
+async def cmd_open_section(message: Message, bot: Bot, command: CommandObject) -> None:
+    """/menu /creador /espectador /pagar /donar /soporte → abren su sección directamente."""
+    await _register(message, bot)
+    await open_menu(bot, message.chat.id, message.from_user, config.MEMBER_COMMAND_MENUS[command.command.lower()])
+
+
+@router.message(Command("idioma", "language", "lang"))
+async def cmd_language(message: Message, bot: Bot) -> None:
+    await _register(message, bot)
+    await message.answer(config.t(config.DEFAULT_LANG, "choose_lang"), reply_markup=language_kb())
+
+
+@router.message(Command("mi_plan", "miplan", "my_plan"))
+async def cmd_my_plan(message: Message, bot: Bot) -> None:
+    """Suscripciones activas del miembro (tipo, vencimiento) con un botón de renovar por cada una."""
+    await _register(message, bot)
+    user_id = message.from_user.id
+    lang = await db.get_lang(user_id)
+    items: list[str] = []
+    rows: list[list[InlineKeyboardButton]] = []
+    seen: set[str] = set()
+    for membership in await db.get_user_active_memberships(user_id):
+        product = config.get_product(membership["product"])
+        if not product or product.key in seen:
+            continue
+        seen.add(product.key)
+        until = (config.t(lang, "my_plan_until", date=config.format_date(membership["expires_at"]))
+                 if membership["expires_at"] else config.t(lang, "my_plan_lifetime"))
+        items.append(config.t(lang, "my_plan_item", role=config.t(lang, f"role_label_{product.member_role}"),
+                              product=html.escape(config.product_name(lang, product.key)), until=until))
+        if product.is_active and membership["expires_at"]:
+            rows.append([InlineKeyboardButton(
+                text=config.t(lang, "btn_renew_product", product=config.product_name(lang, product.key))[:64],
+                callback_data=f"rn:{product.key}",
+            )])
+    for chat_id in {p.chat_id for p in config.all_products() if p.chat_id}:
+        for grant in await db.get_active_grants(user_id, chat_id):
+            key = grant.get("product_key")
+            product = config.get_product(key or "")
+            if product and key not in seen:
+                seen.add(key)
+                items.append(config.t(lang, "my_plan_item", role=config.t(lang, f"role_label_{product.member_role}"),
+                                      product=html.escape(config.product_name(lang, key)),
+                                      until=config.t(lang, "my_plan_pending")))
+    rows.append([InlineKeyboardButton(text=config.t(lang, "btn_home"), callback_data="nav:main")])
+    text = (config.t(lang, "my_plan_title") + "\n" + "\n\n".join(items)) if items else config.t(lang, "my_plan_none")
+    await message.answer(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=rows))
 
 
 async def handle_deep_link(message: Message, bot: Bot, payload: str) -> None:

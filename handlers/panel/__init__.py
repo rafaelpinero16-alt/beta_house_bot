@@ -11,6 +11,7 @@ Un archivo por módulo:
   bans.py       7 · Baneos
   support.py    8 · Contactos y SUPPORT
   clones.py     9 · Clonación autorizada
+  status.py     /estado (diagnóstico) y /sincronizar
   posts.py      Anuncios y publicaciones (usado por 1 y 6)
   editor.py     Editor genérico de textos/enlaces/ajustes
   common.py     Utilidades y estados compartidos
@@ -27,13 +28,14 @@ from handlers.panel import (
     links,
     posts,
     products,
+    status,
     support,
     texts,
     welcome,
 )
 
 router = Router(name="panel")
-for _module in (home, editor, welcome, products, links, buttons, texts, donations, posts, bans, support, clones):
+for _module in (home, status, editor, welcome, products, links, buttons, texts, donations, posts, bans, support, clones):
     router.include_router(_module.router)
 
 __all__ = ["router"]

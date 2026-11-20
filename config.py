@@ -294,6 +294,10 @@ LINK_CATEGORIES: dict[str, str] = {
     "pay_donate": "⭐ Pagos · Donaciones",
     "support": "💬 Contacto directo con los creadores",
 }
+# Valores heredados de Alpha Pig Bros: /estado los señala hasta que confirmes o cambies cada enlace en el /panel.
+FACTORY_LINK_VALUES: frozenset[str] = frozenset({
+    "https://paypal.me/JaviiTorresDIGITAL", "https://t.me/Tjavier_96", "https://x.com/Javiitorrees96",
+})
 LINK_CATALOG: dict[str, tuple[str, str, str, bool]] = {
     "rules_link": ("groups", "BETA HOUSE · reglas", "", True),
     "community_link": ("groups", "BETA HOUSE · grupo/canal público", "", True),
@@ -326,13 +330,15 @@ TEXTS: dict[str, dict[str, str]] = {
         "btn_back": "⬅️ VOLVER",
         "btn_home": "🏠 MENÚ PRINCIPAL",
         "header_hint": "👇 Elige Creador o Espectador en los botones de abajo",
+        # Grupos donde se promociona a los creadores (se inserta en los textos con {cross_promo})
+        "cross_promo": "Beta House, PigBros y The Bunker",
         # ---- Bienvenida (EDITABLE desde /panel → 📝 Textos y multimedia: welcome) ----
         "welcome": (
             "👋 {mention} · <code>{id}</code>\n\n"
             "Bienvenido a <b>🏠 BETA HOUSE VIP</b>, el grupo privado donde <b>creadores de contenido</b> y "
             "<b>espectadores</b> se conectan de forma directa, sin intermediarios.\n\n"
             "🔥 <b>Si eres CREADOR</b>\n"
-            "▪ Promoción cruzada de tus plataformas en <b>Beta House</b>, <b>PigBros</b> y <b>The Bunker</b>.\n"
+            "▪ Promoción cruzada de tus plataformas en <b>{cross_promo}</b>.\n"
             "▪ Publica tus promos con enlaces, textos, fotos y videos dentro del grupo.\n"
             "▪ Prioridad en los <b>videochats en vivo</b> para mostrarte ante toda la comunidad.\n\n"
             "🎟️ <b>Si eres ESPECTADOR</b>\n"
@@ -350,7 +356,7 @@ TEXTS: dict[str, dict[str, str]] = {
             "Como creador podrás <b>publicar tus promociones</b> dentro del grupo: enlaces a tus plataformas "
             "(OnlyFans, JustForFans, Cam4, canales de Telegram…), textos, fotos y videos.\n\n"
             "✅ <b>Beneficios</b>\n"
-            "▪ Promoción cruzada en Beta House, PigBros y The Bunker.\n"
+            "▪ Promoción cruzada en {cross_promo}.\n"
             "▪ Permisos de publicación activados automáticamente al entrar.\n"
             "▪ Prioridad en los videochats en vivo.\n"
             "▪ Contacto directo con los espectadores del grupo.\n\n"
@@ -515,6 +521,26 @@ TEXTS: dict[str, dict[str, str]] = {
             "🔒 Tu suscripción de <b>espectador</b> no permite publicar en BETA HOUSE (mensajes, multimedia ni "
             "enlaces). Si eres creador, suscríbete como <b>Creador</b> desde el menú del bot."
         ),
+        # ---- Mi plan (/mi_plan) ----
+        "my_plan_title": "📋 <b>TUS SUSCRIPCIONES</b>\n",
+        "my_plan_item": "{role} <b>{product}</b>\n🗓 {until}",
+        "my_plan_lifetime": "De por vida",
+        "my_plan_until": "Vence el {date}",
+        "my_plan_pending": "Pendiente: empieza a contar cuando entres al grupo",
+        "my_plan_none": (
+            "No tienes suscripciones activas en este momento.\n\nUsa los botones para suscribirte como "
+            "<b>Creador</b> o como <b>Espectador</b>."
+        ),
+        "role_label_creator": "🔥 Creador",
+        "role_label_viewer": "🎟️ Espectador",
+        "role_label_none": "⭐ Miembro",
+        "btn_renew_product": "🔄 RENOVAR · {product}",
+        # ---- Videochat en vivo (EDITABLE: videochat_live) ----
+        "videochat_live": (
+            "🔴 <b>¡VIDEOCHAT EN VIVO AHORA EN BETA HOUSE!</b>\n\n"
+            "Entra al grupo y únete desde el botón de videochat de la parte superior. ¡Te esperamos!"
+        ),
+        "btn_videochat_join": "📽 IR AL VIDEOCHAT",
         # ---- Errores ----
         "relay_error": "⚠️ No pudimos entregar tu mensaje. Inténtalo de nuevo en unos minutos.",
     },
@@ -527,13 +553,14 @@ TEXTS: dict[str, dict[str, str]] = {
         "btn_back": "⬅️ BACK",
         "btn_home": "🏠 MAIN MENU",
         "header_hint": "👇 Choose Creator or Viewer in the buttons below",
+        "cross_promo": "Beta House, PigBros and The Bunker",
         # ---- Welcome ----
         "welcome": (
             "👋 {mention} · <code>{id}</code>\n\n"
             "Welcome to <b>🏠 BETA HOUSE VIP</b>, the private group where <b>content creators</b> and "
             "<b>viewers</b> connect directly, with no middlemen.\n\n"
             "🔥 <b>If you are a CREATOR</b>\n"
-            "▪ Cross-promotion of your platforms in <b>Beta House</b>, <b>PigBros</b> and <b>The Bunker</b>.\n"
+            "▪ Cross-promotion of your platforms in <b>{cross_promo}</b>.\n"
             "▪ Post your promos with links, text, photos and videos inside the group.\n"
             "▪ Priority in the <b>live video chats</b> to show yourself to the whole community.\n\n"
             "🎟️ <b>If you are a VIEWER</b>\n"
@@ -552,7 +579,7 @@ TEXTS: dict[str, dict[str, str]] = {
             "As a creator you can <b>post your promotions</b> inside the group: links to your platforms "
             "(OnlyFans, JustForFans, Cam4, Telegram channels…), text, photos and videos.\n\n"
             "✅ <b>Benefits</b>\n"
-            "▪ Cross-promotion in Beta House, PigBros and The Bunker.\n"
+            "▪ Cross-promotion in {cross_promo}.\n"
             "▪ Posting permissions enabled automatically when you join.\n"
             "▪ Priority in live video chats.\n"
             "▪ Direct contact with the group's viewers.\n\n"
@@ -717,6 +744,26 @@ TEXTS: dict[str, dict[str, str]] = {
             "🔒 Your <b>viewer</b> subscription doesn't allow posting in BETA HOUSE (messages, media or links). "
             "If you are a creator, subscribe as a <b>Creator</b> from the bot menu."
         ),
+        # ---- My plan (/my_plan) ----
+        "my_plan_title": "📋 <b>YOUR SUBSCRIPTIONS</b>\n",
+        "my_plan_item": "{role} <b>{product}</b>\n🗓 {until}",
+        "my_plan_lifetime": "Lifetime",
+        "my_plan_until": "Expires on {date}",
+        "my_plan_pending": "Pending: it starts counting when you join the group",
+        "my_plan_none": (
+            "You have no active subscriptions right now.\n\nUse the buttons to subscribe as a <b>Creator</b> "
+            "or as a <b>Viewer</b>."
+        ),
+        "role_label_creator": "🔥 Creator",
+        "role_label_viewer": "🎟️ Viewer",
+        "role_label_none": "⭐ Member",
+        "btn_renew_product": "🔄 RENEW · {product}",
+        # ---- Live video chat ----
+        "videochat_live": (
+            "🔴 <b>LIVE VIDEO CHAT NOW IN BETA HOUSE!</b>\n\n"
+            "Open the group and join from the video chat button at the top. See you there!"
+        ),
+        "btn_videochat_join": "📽 GO TO THE VIDEO CHAT",
         # ---- Errors ----
         "relay_error": "⚠️ We couldn't deliver your message. Please try again in a few minutes.",
     },
@@ -1185,6 +1232,70 @@ ADMIN_TEXTS: dict[str, str] = {
     "viewer_mode_readonly": "solo lectura",
     "viewer_mode_text": "solo texto (sin multimedia ni enlaces)",
     "btn_viewer_mode": "🎟️ Permisos del espectador",
+    "btn_videochat_alert": "🔴 Aviso de videochat: {state}",
+    "btn_stars_rate": "💱 Tasa de retiro de Stars",
+    "btn_fix_group": "🛠 Abrir permisos generales de {title}",
+    "btn_status_refresh": "🔁 Actualizar diagnóstico",
+    "btn_status_sync": "🔄 Sincronizar permisos",
+    "state_on": "activado",
+    "state_off": "desactivado",
+    "plan_net_estimate": (
+        "\n💱 {stars} ⭐ ≈ <b>{usd} USD</b> netos al retirar (tasa: {rate} USD por 1000 ⭐)."
+    ),
+    "plan_net_suggest": "\n🎯 Para recibir ≈ {target} USD netos (precio PayPal): ≈ <b>{suggest} ⭐</b>.",
+    "group_fixed": (
+        "🛠 Listo: primero reapliqué los permisos de {synced} miembros (espectadores en solo lectura) y luego abrí "
+        "los permisos generales de «{title}» (mensajes, multimedia y enlaces) para que los creadores puedan publicar."
+    ),
+    "group_fix_failed": "⚠️ No pude cambiar los permisos de «{title}»: {error}",
+    "role_released": "🎭 {count} miembro(s) del producto ya no tienen restricciones gestionadas por el bot.",
+    # ---- /estado ----
+    "status_title": "🩺 <b>DIAGNÓSTICO · BETA HOUSE</b>\n",
+    "status_section_chats": "\n<b>🏠 Grupos con roles</b>",
+    "status_section_team": "\n<b>👥 Grupo de gestión y registros</b>",
+    "status_section_links": "\n<b>🔗 Enlaces</b>",
+    "status_section_plans": "\n<b>💰 Planes activos</b>",
+    "status_section_settings": "\n<b>⚙️ Ajustes</b>",
+    "status_ok": "✅ {text}",
+    "status_warn": "⚠️ {text}",
+    "status_chat_line": "<b>{title}</b> · 🔥 {creators} creadores · 🎟️ {viewers} espectadores",
+    "status_bot_perms": "Bot admin: invitar {invite} · restringir {restrict} · borrar mensajes {delete}",
+    "status_defaults_ok": "Permisos generales abiertos: los creadores pueden publicar",
+    "status_admin_group_ok": "Grupo de gestión con Temas y permiso para gestionarlos",
+    "status_admin_group_bad": "El grupo de gestión necesita Temas activados y el permiso «Gestionar temas» para el bot",
+    "status_log_ok": "{name}: el bot puede publicar",
+    "status_log_bad": "{name}: el bot no puede publicar (hazlo admin con «Publicar mensajes»)",
+    "status_log_sales": "Canal de ventas",
+    "status_log_tips": "Canal de donaciones",
+    "status_link_factory": "{label}: sigue con el valor heredado de Alpha Pig Bros ({value}). Confírmalo o cámbialo en /panel → 🔗 Enlaces",
+    "status_link_empty": "{label}: vacío (el botón queda oculto)",
+    "status_links_ok": "Enlaces de pago y contacto propios configurados",
+    "status_cross_promo": "Promoción cruzada anunciada: «{value}» (edítala en /panel → 📝 Textos → Bienvenida)",
+    "status_plan_line": "{product} · {plan}: {stars} ⭐ (≈ {usd} USD netos) · PayPal {ext}",
+    "status_no_plans": "{product}: ningún plan activo",
+    "status_settings_line": "Acceso: {mode} · Espectadores: {viewer} · Aviso de videochat: {video}",
+    "status_summary_ok": "\n✅ <b>Todo en orden.</b>",
+    "status_summary_warn": "\n⚠️ <b>{count} punto(s) por revisar.</b>",
+    "startup_issues": (
+        "⚠️ <b>BETA HOUSE arrancó con {count} punto(s) por revisar.</b>\nEscribe /estado para ver el detalle y "
+        "corregirlos."
+    ),
+    "sync_started": "🔄 Sincronizando permisos… te aviso al terminar.",
+    # ---- Canales autorizados de creadores ----
+    "cmd_channel_usage": (
+        "Uso en el Tema del creador:\n<code>/canal -100123…</code> autoriza ese canal (puede publicar «como canal» "
+        "mientras el creador tenga plan activo)\n<code>/canal quitar -100123…</code> lo retira\n<code>/canal</code> "
+        "lista sus canales."
+    ),
+    "channel_added": "📢 Canal <code>{channel_id}</code> autorizado para {mention}.",
+    "channel_removed": "📢 Canal <code>{channel_id}</code> retirado.",
+    "channel_list": "📢 Canales autorizados de {mention}: {channels}",
+    "channel_list_empty": "📢 {mention} no tiene canales autorizados.",
+    "channel_taken": "⚠️ Ese canal ya está autorizado para otro miembro (<code>{owner}</code>).",
+    "channel_post_deleted": (
+        "📢 Borré en <b>{chat}</b> un mensaje enviado como el canal «{title}» (<code>{channel_id}</code>).\n"
+        "Si ese canal es de un creador, autorízalo escribiendo en su Tema: <code>/canal {channel_id}</code>"
+    ),
     "btn_plan": "{status} {plan}",
     "plan_detail": (
         "<b>🗓 {product} · {plan}</b>\nEstado: {status}\n⭐ Precio en Stars: <b>{stars}</b>\n"
@@ -1442,6 +1553,42 @@ DEFAULT_BUTTONS: dict[str, list[tuple[str, str, str, str, str, int]]] = {
 }
 
 
+# ===========================================================================
+# Comandos del menú «/» de Telegram (se registran solos al arrancar; no hace falta @BotFather)
+# ===========================================================================
+# (comando, descripción ES, descripción EN)
+MEMBER_COMMANDS: list[tuple[str, str, str]] = [
+    ("start", "Inicio: idioma y bienvenida", "Start: language and welcome"),
+    ("menu", "Menú principal de BETA HOUSE", "BETA HOUSE main menu"),
+    ("creador", "Suscribirme como creador", "Subscribe as a creator"),
+    ("espectador", "Suscribirme como espectador", "Subscribe as a viewer"),
+    ("pagar", "Pagar con PayPal y enviar comprobante", "Pay with PayPal and send receipt"),
+    ("mi_plan", "Ver mi suscripción y renovar", "See my subscription and renew"),
+    ("soporte", "Hablar con los creadores", "Talk to the creators"),
+    ("donar", "Hacer una donación", "Make a donation"),
+    ("idioma", "Cambiar idioma / Language", "Change language / Idioma"),
+]
+# Comandos de miembro → sección que abren
+MEMBER_COMMAND_MENUS: dict[str, str] = {
+    "menu": "main", "creador": "creator", "espectador": "viewer", "pagar": "paypal_hub", "donar": "donate",
+    "soporte": "support",
+}
+ADMIN_PRIVATE_COMMANDS: list[tuple[str, str, str]] = [
+    ("panel", "Panel de control", "Control panel"),
+    ("estado", "Diagnóstico de BETA HOUSE", "BETA HOUSE health check"),
+    ("sincronizar", "Reaplicar permisos de todos los miembros", "Re-apply every member's permissions"),
+]
+TEAM_COMMANDS: list[tuple[str, str, str]] = [
+    ("aprobar", "Dar acceso: /aprobar creador 1 · espectador 3", "Grant access: /aprobar creador 1"),
+    ("rol", "Reaplicar permisos del miembro", "Re-apply member permissions"),
+    ("canal", "Autorizar canal del creador: /canal -100…", "Authorize creator channel"),
+    ("revocar", "Anular su enlace pendiente", "Revoke pending link"),
+    ("cerrar", "Cerrar el Tema", "Close the topic"),
+    ("ban", "Banear: /ban motivo", "Ban: /ban reason"),
+    ("unban", "Quitar baneo", "Unban"),
+]
+
+
 # ---- Caché de secciones y enlaces personalizados -------------------------------
 @dataclass(frozen=True, slots=True)
 class Menu:
@@ -1515,6 +1662,7 @@ TEXT_CATALOG: dict[str, tuple[str, str]] = {
     "lang_set": ("welcome", "Idioma elegido"),
     "welcome": ("welcome", "Mensaje de bienvenida"),
     "header_hint": ("welcome", "Aviso del botón divisor (header)"),
+    "cross_promo": ("welcome", "Grupos de promoción cruzada (variable {cross_promo})"),
     # Suscripciones (textos de sección y planes)
     "creator_info": ("subs", "Sección Creadores"),
     "creator_paypal": ("subs", "Sección Creadores · PayPal"),
@@ -1546,6 +1694,16 @@ TEXT_CATALOG: dict[str, tuple[str, str]] = {
     "role_creator_on": ("roles", "Permisos de creador activados"),
     "role_viewer_on": ("roles", "Espectador: solo lectura"),
     "viewer_blocked": ("roles", "Aviso: espectador no puede publicar"),
+    "videochat_live": ("roles", "Aviso de videochat en vivo"),
+    "my_plan_none": ("roles", "/mi_plan sin suscripciones"),
+    "my_plan_title": ("roles", "/mi_plan · título"),
+    "my_plan_item": ("roles", "/mi_plan · línea de cada suscripción"),
+    "my_plan_until": ("roles", "/mi_plan · fecha de vencimiento"),
+    "my_plan_lifetime": ("roles", "/mi_plan · de por vida"),
+    "my_plan_pending": ("roles", "/mi_plan · pendiente de entrar"),
+    "role_label_creator": ("roles", "Etiqueta de rol · creador"),
+    "role_label_viewer": ("roles", "Etiqueta de rol · espectador"),
+    "role_label_none": ("roles", "Etiqueta de rol · miembro"),
     # Agradecimientos
     "access_granted": ("thanks", "Pago confirmado + acceso"),
     "access_renewed": ("thanks", "Renovación confirmada"),
@@ -1575,6 +1733,8 @@ TEXT_CATALOG: dict[str, tuple[str, str]] = {
     "btn_join": ("buttons", "Entrar (acceso)"),
     "btn_tip_option": ("buttons", "Monto de donación"),
     "btn_renew": ("buttons", "Renovar suscripción"),
+    "btn_renew_product": ("buttons", "Botón renovar en /mi_plan"),
+    "btn_videochat_join": ("buttons", "Botón del aviso de videochat"),
     "btn_open_support": ("buttons", "Abrir chat de soporte"),
     "plan_btn_stars": ("buttons", "Plan con precio en Stars"),
     "plan_btn_ext": ("buttons", "Plan con precio externo"),
@@ -1609,7 +1769,7 @@ MENU_TEXT_KEYS = frozenset(text_key for text_key, _, _ in SYSTEM_MENUS.values())
 LANG_FLAGS = {"es": "🇪🇸 ES", "en": "🇺🇸 EN"}
 
 GLOBAL_PLACEHOLDERS = frozenset({
-    "stars_price", "paypal_price", "vip_days", "ttl_min",
+    "stars_price", "paypal_price", "vip_days", "ttl_min", "cross_promo",
     "creator_stars", "creator_paypal", "viewer_stars", "viewer_paypal",
 })
 WELCOME_PLACEHOLDERS = frozenset({"mention", "id", "name", "MENTION", "ID", "NAME"})
@@ -1689,6 +1849,15 @@ SETTINGS["viewer_mode"] = Setting(
     "viewer_mode", "choice", "subs", "settings", "🎟️ Permisos del espectador en el grupo",
     "readonly (solo lectura) o text (solo texto, sin multimedia ni enlaces).", choices=VIEWER_MODES,
 )
+SETTINGS["stars_usd_per_1000"] = Setting(
+    "stars_usd_per_1000", "int", "subs", "settings", "💱 USD netos que recibes por 1000 ⭐",
+    "Para estimar cuánto recibes al retirar Stars. Revísalo en Telegram (Ajustes del bot → Balance).",
+    min_value=1, max_value=100,
+)
+SETTINGS["videochat_alert"] = Setting(
+    "videochat_alert", "choice", "subs", "settings", "🔴 Aviso de videochat en vivo",
+    "on: al iniciar un videochat en el grupo, el bot avisa por privado a los miembros activos.", choices=("on", "off"),
+)
 SETTINGS["support_mode"] = Setting(
     "support_mode", "choice", "support", "settings", "💬 Modo del chat de soporte", "button o always.",
     choices=("button", "always"),
@@ -1699,6 +1868,8 @@ _DEFAULTS: dict[str, Any] = {
     "invite_ttl_minutes": lambda: str(DEFAULT_INVITE_TTL_MINUTES),
     "access_mode": lambda: _str("ACCESS_MODE", "request"),
     "viewer_mode": lambda: _str("VIEWER_MODE", "readonly"),
+    "stars_usd_per_1000": lambda: str(_int("STARS_USD_PER_1000", 13)),
+    "videochat_alert": lambda: _str("VIDEOCHAT_ALERT", "on"),
     "support_mode": lambda: _str("SUPPORT_MODE", "button"),
     **{key: (lambda k=key: LINK_CATALOG[k][2]) for key in LINK_CATALOG},
 }
@@ -1778,6 +1949,15 @@ def viewer_mode() -> str:
     return value if value in VIEWER_MODES else "readonly"
 
 
+def stars_usd_rate() -> float:
+    """USD netos por cada Estrella al retirarlas (ajuste en /panel, por 1000 ⭐)."""
+    return int(setting_value("stars_usd_per_1000")) / 1000
+
+
+def videochat_alert_enabled() -> bool:
+    return setting_value("videochat_alert") == "on"
+
+
 def support_mode() -> str:
     return setting_value("support_mode")
 
@@ -1817,6 +1997,7 @@ def _dynamic_vars() -> dict[str, Any]:
         "viewer_paypal": viewer.ext_price if viewer else "",
         "vip_days": 30,
         "ttl_min": ttl_minutes(),
+        "cross_promo": setting_value(f"cross_promo_{DEFAULT_LANG}"),
     }
 
 
@@ -1970,6 +2151,8 @@ def t(lang: str | None, key: str, /, **kwargs: Any) -> str:
     lang = lang if lang in TEXTS else DEFAULT_LANG
     default = TEXTS[lang].get(key) or TEXTS[DEFAULT_LANG][key]
     template = setting_value(f"{key}_{lang}") if key in TEXT_CATALOG else default
+    if key != "cross_promo":
+        kwargs.setdefault("cross_promo", setting_value(f"cross_promo_{lang}"))
     try:
         return render_template(template, **kwargs)
     except (KeyError, IndexError, ValueError):

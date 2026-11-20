@@ -215,6 +215,16 @@ CREATE TABLE IF NOT EXISTS posts (
 
 CREATE INDEX IF NOT EXISTS idx_payments_user   ON payments(user_id, status);
 CREATE INDEX IF NOT EXISTS idx_products_chat   ON products(chat_id);
+
+-- Canales autorizados de creadores: pueden publicar «como canal» en los grupos con roles
+-- mientras su dueño tenga una suscripción de creador activa.
+CREATE TABLE IF NOT EXISTS allowed_channels (
+    channel_id INTEGER PRIMARY KEY,
+    user_id    INTEGER NOT NULL,
+    added_by   INTEGER,
+    added_at   TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_allowed_channels_user ON allowed_channels(user_id);
 CREATE INDEX IF NOT EXISTS idx_posts_due       ON posts(status, send_at);
 CREATE INDEX IF NOT EXISTS idx_buttons_menu    ON ui_buttons(menu_id, sort_order);
 CREATE INDEX IF NOT EXISTS idx_memberships     ON memberships(status, expires_at);
@@ -678,6 +688,47 @@ async def list_active_members_in_chat(chat_id: int) -> list[int]:
         "SELECT DISTINCT user_id FROM memberships WHERE chat_id = ? AND status = 'active' ORDER BY user_id", (chat_id,)
     )
     return [r["user_id"] for r in rows]
+
+
+async def add_allowed_channel(channel_id: int, user_id: int, added_by: int) -> int | None:
+    """Autoriza un canal para un miembro. Devuelve el dueño anterior si ya pertenecía a OTRO miembro (no lo cambia)."""
+    row = await _fetchone("SELECT user_id FROM allowed_channels WHERE channel_id = ?", (channel_id,))
+    if row and row["user_id"] != user_id:
+        return row["user_id"]
+    await _write(
+        "INSERT OR REPLACE INTO allowed_channels (channel_id, user_id, added_by) VALUES (?, ?, ?)",
+        (channel_id, user_id, added_by),
+    )
+    return None
+
+
+async def remove_allowed_channel(channel_id: int, user_id: int) -> bool:
+    cur = await _write("DELETE FROM allowed_channels WHERE channel_id = ? AND user_id = ?", (channel_id, user_id))
+    return cur.rowcount > 0
+
+
+async def get_channel_owner(channel_id: int) -> int | None:
+    row = await _fetchone("SELECT user_id FROM allowed_channels WHERE channel_id = ?", (channel_id,))
+    return row["user_id"] if row else None
+
+
+async def list_user_channels(user_id: int) -> list[int]:
+    rows = await _fetchall("SELECT channel_id FROM allowed_channels WHERE user_id = ? ORDER BY added_at", (user_id,))
+    return [r["channel_id"] for r in rows]
+
+
+async def list_active_product_members(product_key: str) -> list[dict[str, Any]]:
+    return await _fetchall(
+        "SELECT DISTINCT user_id, chat_id FROM memberships WHERE product = ? AND status = 'active'", (product_key,)
+    )
+
+
+async def count_active_by_product(chat_id: int) -> dict[str, int]:
+    rows = await _fetchall(
+        "SELECT product, COUNT(DISTINCT user_id) AS n FROM memberships WHERE chat_id = ? AND status = 'active' "
+        "GROUP BY product", (chat_id,),
+    )
+    return {r["product"]: r["n"] for r in rows}
 
 
 async def close_membership(membership_id: int, to_status: str) -> bool:

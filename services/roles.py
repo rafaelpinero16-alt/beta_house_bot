@@ -89,15 +89,16 @@ async def effective_role(user_id: int, chat_id: int) -> str:
     En un chat con roles, quien no tiene suscripción activa (p. ej. entró por otro medio) queda como espectador:
     así nadie publica sin haber pagado como creador.
     """
+    memberships = await db.get_active_memberships_in_chat(user_id, chat_id)
     best = "none"
-    for membership in await db.get_active_memberships_in_chat(user_id, chat_id):
+    for membership in memberships:
         product = config.get_product(membership["product"])
         role = product.member_role if product else "none"
         if ROLE_RANK.get(role, 0) > ROLE_RANK[best]:
             best = role
-    if best == "none" and is_role_chat(chat_id):
-        return "viewer"
-    return best
+    if not memberships and is_role_chat(chat_id):
+        return "viewer"   # sin suscripción: solo lectura
+    return best           # "none" = tiene una suscripción cuyo producto no gestiona permisos
 
 
 async def _member_status(bot: Bot, chat_id: int, user_id: int):
@@ -137,6 +138,78 @@ async def apply_role(bot: Bot, chat_id: int, user_id: int, role: str | None = No
             log.warning("No se pudo aplicar el rol %s a %s en %s: %s", role, user_id, chat_id, exc.message)
             return role, exc.message
     return role, "retry"
+
+
+def full_permissions() -> ChatPermissions:
+    """Todos los permisos de miembro: quitar la restricción individual (se aplican los generales del grupo)."""
+    return ChatPermissions(
+        can_send_messages=True, can_send_audios=True, can_send_documents=True, can_send_photos=True,
+        can_send_videos=True, can_send_video_notes=True, can_send_voice_notes=True, can_send_polls=True,
+        can_send_other_messages=True, can_add_web_page_previews=True, can_invite_users=True,
+        can_change_info=True, can_pin_messages=True, can_manage_topics=True,
+    )
+
+
+async def lift_restrictions(bot: Bot, chat_id: int, user_id: int) -> str | None:
+    """Quita la restricción individual del miembro. None = hecho · "skip" = admin/fuera · otro = error."""
+    if await _member_status(bot, chat_id, user_id) not in _IN_CHAT_STATUSES:
+        return "skip"
+    try:
+        await bot.restrict_chat_member(
+            chat_id=chat_id, user_id=user_id, permissions=full_permissions(), use_independent_chat_permissions=True,
+        )
+        forget(chat_id, user_id)
+        return None
+    except TelegramAPIError as exc:
+        return exc.message
+
+
+async def release_product(bot: Bot, product_key: str) -> int:
+    """Tras pasar un producto a «sin gestión»: a sus miembros se les reaplica el rol que les quede o, si ya no
+    les corresponde ninguno, se les quitan las restricciones que el bot les había puesto."""
+    done = 0
+    for row in await db.list_active_product_members(product_key):
+        chat_id, user_id = row["chat_id"], row["user_id"]
+        role = await effective_role(user_id, chat_id) if is_role_chat(chat_id) else "none"
+        result = await lift_restrictions(bot, chat_id, user_id) if role == "none" else (
+            await apply_role(bot, chat_id, user_id, role))[1]
+        done += result is None
+        await asyncio.sleep(config.BROADCAST_DELAY_SECONDS)
+    return done
+
+
+async def channel_may_post(channel_id: int, chat_id: int) -> bool:
+    """Un canal puede publicar «como canal» si está autorizado para un creador con plan de creador activo."""
+    owner = await db.get_channel_owner(channel_id)
+    return bool(owner) and await effective_role(owner, chat_id) == "creator"
+
+
+def open_defaults() -> ChatPermissions:
+    """Permisos generales que necesita un grupo con roles: los creadores pueden publicar todo."""
+    return ChatPermissions(
+        can_send_messages=True, can_send_audios=True, can_send_documents=True, can_send_photos=True,
+        can_send_videos=True, can_send_video_notes=True, can_send_voice_notes=True, can_send_polls=True,
+        can_send_other_messages=True, can_add_web_page_previews=True, can_invite_users=False,
+        can_change_info=False, can_pin_messages=False, can_manage_topics=False,
+    )
+
+
+async def open_group_defaults(bot: Bot, chat_id: int) -> tuple[int, str | None]:
+    """Primero restringe a todos los espectadores conocidos y DESPUÉS abre los permisos generales del grupo,
+    para que en ningún momento un espectador quede con permiso de publicar. Devuelve (sincronizados, error)."""
+    counts = await sync_chat(bot, chat_id)
+    try:
+        current = (await bot.get_chat(chat_id)).permissions
+        wanted = open_defaults()
+        if current is not None:  # conserva lo que no es publicar (invitar, fijar, editar info, temas)
+            wanted = wanted.model_copy(update={
+                "can_invite_users": current.can_invite_users, "can_change_info": current.can_change_info,
+                "can_pin_messages": current.can_pin_messages, "can_manage_topics": current.can_manage_topics,
+            })
+        await bot.set_chat_permissions(chat_id, wanted, use_independent_chat_permissions=True)
+    except TelegramAPIError as exc:
+        return counts["ok"], exc.message
+    return counts["ok"], None
 
 
 def last_applied(chat_id: int, user_id: int) -> str | None:

@@ -12,12 +12,13 @@ from aiogram import BaseMiddleware, Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ChatMemberStatus, ChatType, ParseMode
 from aiogram.exceptions import TelegramAPIError, TelegramUnauthorizedError
-from aiogram.types import BotCommand, BotCommandScopeChat, BotCommandScopeDefault, Message, Update
+from aiogram.types import Message, Update
 
 import config
 import database as db
 from handlers import admin_handlers, group_handlers, panel, user_handlers
-from services import access, broadcast, catalog
+from services import access, broadcast, catalog, status
+from services.commands import setup_commands
 from services.moderation import is_banned, load_banned
 
 log = logging.getLogger("bot")
@@ -131,20 +132,20 @@ async def verify_setup(bot: Bot) -> None:
     )
 
 
-async def setup_commands(bot: Bot) -> None:
-    """/start para todos; /panel visible solo en el chat privado de cada admin."""
-    await bot.set_my_commands(
-        [BotCommand(command="start", description=config.ta("cmd_desc_start"))], scope=BotCommandScopeDefault()
-    )
-    admin_cmds = [
-        BotCommand(command="start", description=config.ta("cmd_desc_start")),
-        BotCommand(command="panel", description=config.ta("cmd_desc_panel")),
-    ]
+async def notify_startup_issues(bot: Bot) -> None:
+    """Si el diagnóstico encuentra puntos por revisar, avisa por privado a los admins (detalle con /estado)."""
+    try:
+        report = await status.build(bot)
+    except Exception:
+        log.exception("No se pudo generar el diagnóstico de arranque")
+        return
+    if not report.warnings:
+        log.info("Diagnóstico de arranque: todo en orden.")
+        return
+    log.warning("Diagnóstico de arranque: %s punto(s) por revisar (ver /estado).", report.warnings)
     for admin_id in config.ADMIN_IDS:
-        try:
-            await bot.set_my_commands(admin_cmds, scope=BotCommandScopeChat(chat_id=admin_id))
-        except TelegramAPIError as exc:  # el admin aún no ha abierto el bot
-            log.warning("No se pudo registrar /panel para %s: %s", admin_id, exc)
+        with contextlib.suppress(TelegramAPIError):
+            await bot.send_message(admin_id, config.ta("startup_issues", count=report.warnings))
 
 
 _LEGACY_KEYS = ("stars_price", "paypal_price_text", "vip_plan_days", "welcome_media",
@@ -227,6 +228,7 @@ async def main() -> None:
         await verify_setup(bot)
         await bot.delete_webhook(drop_pending_updates=False)
         await setup_commands(bot)
+        await notify_startup_issues(bot)
         sweeper = asyncio.create_task(background(bot), name="background")
         log.info("Bot iniciado (polling).")
         # resolve_used_update_types() incluye chat_member, chat_join_request y my_chat_member.

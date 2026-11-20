@@ -18,7 +18,7 @@ import config
 import database as db
 from handlers.panel import editor
 from handlers.panel.common import NOT_COMMAND, ProductEdit, admin_router, audit, back_kb, grid, replace, short, yes_no
-from services import catalog, roles
+from services import catalog, roles, status
 
 router = admin_router("panel_products")
 log = logging.getLogger(__name__)
@@ -30,6 +30,14 @@ def _background(coro) -> None:
     task = asyncio.create_task(coro)
     _tasks.add(task)
     task.add_done_callback(_tasks.discard)
+
+
+async def _release_and_report(bot: Bot, admin_id: int, product_key: str) -> None:
+    try:
+        count = await roles.release_product(bot, product_key)
+        await bot.send_message(admin_id, config.ta("role_released", count=count))
+    except Exception:
+        log.exception("Error al liberar los miembros del producto %s", product_key)
 
 
 async def _sync_and_report(bot: Bot, admin_id: int, chat_id: int | None) -> None:
@@ -132,6 +140,12 @@ def plan_view(key: str, months: int) -> tuple[str, InlineKeyboardMarkup]:
         stars=f"{plan.stars_price} XTR" if plan and plan.stars_price else config.ta("plan_off"),
         ext=html.escape(plan.ext_price) if plan and plan.ext_price else config.ta("plan_off"),
     )
+    if plan and plan.stars_price:
+        text += config.ta("plan_net_estimate", stars=plan.stars_price, usd=f"{status.net_usd(plan.stars_price):.2f}",
+                          rate=f"{config.stars_usd_rate() * 1000:g}")
+    target = status.price_number(plan.ext_price) if plan and plan.ext_price else None
+    if target:
+        text += config.ta("plan_net_suggest", target=f"{target:g}", suggest=status.stars_for_usd(target))
     b = InlineKeyboardBuilder()
     b.button(text=config.ta("btn_plan_toggle_off" if active else "btn_plan_toggle_on"), callback_data=f"pp:pt:{key}:{months}")
     b.button(text=config.ta("btn_plan_stars"), callback_data=f"pp:ps:{key}:{months}")
@@ -149,6 +163,9 @@ def settings_view() -> tuple[str, InlineKeyboardMarkup]:
     b = InlineKeyboardBuilder()
     b.button(text=config.ta("btn_access_mode"), callback_data="pp:mode")
     b.button(text=config.ta("btn_viewer_mode"), callback_data="pp:vmode")
+    b.button(text=config.ta("btn_videochat_alert", state=config.ta(
+        "state_on" if config.videochat_alert_enabled() else "state_off")), callback_data="pp:vchat")
+    b.button(text=config.ta("btn_stars_rate"), callback_data="pp:set:stars_usd_per_1000")
     b.button(text=config.SETTINGS["invite_ttl_minutes"].label, callback_data="pp:set:invite_ttl_minutes")
     b.button(text=config.SETTINGS["reminder_days"].label, callback_data="pp:set:reminder_days")
     b.button(text=config.ta("btn_reminder_text"), callback_data="panel:text:membership_reminder")
@@ -255,7 +272,7 @@ async def sub_settings(cb: CallbackQuery, state: FSMContext) -> None:
 @router.callback_query(F.data.startswith("pp:set:"))
 async def edit_sub_setting(cb: CallbackQuery, state: FSMContext) -> None:
     key = cb.data.split(":", 2)[2]
-    if key not in ("invite_ttl_minutes", "reminder_days"):
+    if key not in ("invite_ttl_minutes", "reminder_days", "stars_usd_per_1000"):
         await cb.answer()
         return
     await cb.answer()
@@ -270,6 +287,17 @@ async def toggle_access_mode(cb: CallbackQuery, bot: Bot) -> None:
     config.apply_override("access_mode", new)
     await audit(bot, config.SETTINGS["access_mode"].label, old, new, cb.from_user.full_name)
     await cb.answer(config.ta(f"access_mode_{new}"))
+    await replace(cb, *settings_view())
+
+
+@router.callback_query(F.data == "pp:vchat")
+async def toggle_videochat_alert(cb: CallbackQuery, bot: Bot) -> None:
+    old = config.setting_value("videochat_alert")
+    new = "off" if old == "on" else "on"
+    await db.set_config("videochat_alert", new)
+    config.apply_override("videochat_alert", new)
+    await audit(bot, config.SETTINGS["videochat_alert"].label, old, new, cb.from_user.full_name)
+    await cb.answer(config.ta("state_on" if new == "on" else "state_off"))
     await replace(cb, *settings_view())
 
 
@@ -341,6 +369,8 @@ async def product_actions(cb: CallbackQuery, state: FSMContext, bot: Bot) -> Non
         await _show_product(cb, key)
         if product.chat_id and new_role != "none":
             _background(_sync_and_report(bot, cb.from_user.id, product.chat_id))
+        elif product.chat_id:   # «sin gestión»: quitar las restricciones que el bot había puesto
+            _background(_release_and_report(bot, cb.from_user.id, key))
     elif op == "sync":
         if not product.chat_id or not roles.is_role_chat(product.chat_id):
             await cb.answer(config.ta("role_none"), show_alert=True)

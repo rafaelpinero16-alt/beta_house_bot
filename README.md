@@ -75,9 +75,36 @@ Igual que Alpha Pig Bros, más:
 - **🔘 Botones:** nueva acción `📌 Encabezado / Divisor (solo texto)`. Los nombres admiten variables de precio:
   `{creator_paypal}` `{creator_stars}` `{viewer_paypal}` `{viewer_stars}` (también en todos los textos).
 
-## Comandos en el Tema del miembro (grupo de gestión)
-`/aprobar [producto] [meses]` (alias: `/aprobar creador 3`, `/aprobar espectador 1`) · `/rol` (reaplica sus
-permisos) · `/revocar` · `/cerrar` · `/ban motivo` · `/unban`.
+## Comandos (se registran solos al arrancar; no hace falta @BotFather)
+| Quién | Dónde | Comandos |
+|---|---|---|
+| Miembros | Chat privado | `/start` `/menu` `/creador` `/espectador` `/pagar` `/mi_plan` `/soporte` `/donar` `/idioma` |
+| Admins | Su chat privado | Todo lo anterior + `/panel` `/estado` `/sincronizar` |
+| Equipo | Tema del miembro en el grupo de gestión | `/aprobar creador 3` · `/rol` · `/canal -100…` · `/revocar` · `/cerrar` · `/ban motivo` · `/unban` |
+
+Las descripciones del menú «/» salen en español o inglés según la app de cada persona. El menú de admin aparece en
+cuanto el admin escribe `/start` o `/panel` al bot (si no lo ves, cierra y vuelve a abrir el chat).
+
+## Diagnóstico y correcciones
+- `/estado`: permisos del bot y del grupo, Temas del grupo de gestión, canales de registro, enlaces heredados de
+  Alpha Pig Bros, promoción cruzada anunciada, planes con su valor neto estimado en USD y ajustes clave.
+  - **🛠 Abrir permisos generales**: si el grupo es de solo lectura, primero restringe a todos los espectadores y
+    después abre mensajes, multimedia y enlaces (conserva fijar, invitar y editar información).
+  - **🔄 Sincronizar permisos** (= `/sincronizar`): reaplica el rol de todos los miembros activos.
+- Al arrancar, si hay puntos por revisar, el bot avisa por privado a los admins.
+- **Enlaces heredados**: para que dejen de aparecer, cámbialos o guárdalos de nuevo (aunque sea el mismo valor) en
+  `/panel → 🔗 Enlaces`.
+- **Promoción cruzada**: texto `cross_promo` (ES/EN) en `/panel → 📝 Textos → Bienvenida`; se inserta en la
+  bienvenida y en la sección de creadores con `{cross_promo}`.
+- **Stars → USD**: en la ficha de cada plan se ve el neto estimado y cuántas ⭐ cobrar para recibir el precio de
+  PayPal. La tasa se ajusta en `⚙️ Ajustes → 💱 Tasa de retiro de Stars` (por defecto 13 USD por 1000 ⭐).
+- **Canales de creadores**: un mensaje «como canal» se borra salvo que el canal esté autorizado con `/canal -100…`
+  en el Tema del creador y este tenga plan de creador activo. Al borrar uno no autorizado, el bot avisa al equipo
+  con el comando listo para autorizarlo.
+- **Rol «sin gestión»**: al pasar un producto a esa opción, el bot quita las restricciones que había puesto a sus
+  miembros (o les deja el rol que les quede por otra suscripción).
+- **Videochats**: al empezar un videochat en el grupo, el bot avisa por privado a todos los miembros activos con un
+  botón para ir (como máximo una vez cada 30 min). Se apaga en `⚙️ Ajustes → 🔴 Aviso de videochat`.
 
 ## Primer arranque
 Crea los productos `creator` y `viewer` sobre `BETA_HOUSE_CHAT_ID` con sus planes de 1 mes activos

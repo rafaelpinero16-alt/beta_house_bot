@@ -1,7 +1,7 @@
 """Inicio del /panel: resumen, 9 módulos, /cancelar y cerrar."""
 from __future__ import annotations
 
-from aiogram import F
+from aiogram import Bot, F
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
@@ -9,6 +9,7 @@ from aiogram.types import CallbackQuery, InlineKeyboardMarkup, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 import config
+from services.commands import ensure_admin_commands
 import database as db
 from handlers.panel import bans, buttons, clones, donations, editor, products, support, texts, welcome
 from handlers.panel.common import ALL_STATES, admin_router, grid, replace
@@ -55,8 +56,9 @@ async def send_home(target: Message) -> None:
 
 
 @router.message(Command("panel"))
-async def cmd_panel(message: Message, state: FSMContext) -> None:
+async def cmd_panel(message: Message, state: FSMContext, bot: Bot) -> None:
     await state.clear()
+    await ensure_admin_commands(bot, message.from_user.id)
     await send_home(message)
 
 

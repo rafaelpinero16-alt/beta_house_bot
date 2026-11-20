@@ -382,6 +382,39 @@ async def cmd_role(message: Message, bot: Bot) -> None:
     await message.reply("\n".join(lines))
 
 
+@router.message(Command("canal"), F.chat.id == config.ADMIN_GROUP_ID)
+async def cmd_channel(message: Message, bot: Bot, command: CommandObject) -> None:
+    """/canal -100… autoriza un canal del creador · /canal quitar -100… lo retira · /canal lista sus canales."""
+    user_id = await _topic_user(message, bot)
+    if not user_id:
+        return
+    contact = await Contact.from_db(user_id)
+    args = (command.args or "").split()
+    remove = bool(args) and args[0].lower() in ("quitar", "remove", "borrar", "del")
+    if remove:
+        args = args[1:]
+    if not args:
+        channels = await db.list_user_channels(user_id)
+        text = (config.ta("channel_list", mention=contact.mention, channels=", ".join(f"<code>{c}</code>" for c in channels))
+                if channels else config.ta("channel_list_empty", mention=contact.mention))
+        await message.reply(text + "\n\n" + config.ta("cmd_channel_usage"))
+        return
+    raw = args[0]
+    if not raw.lstrip("-").isdigit() or not raw.startswith("-100"):
+        await message.reply(config.ta("cmd_channel_usage"))
+        return
+    channel_id = int(raw)
+    if remove:
+        await db.remove_allowed_channel(channel_id, user_id)
+        await message.reply(config.ta("channel_removed", channel_id=channel_id))
+        return
+    owner = await db.add_allowed_channel(channel_id, user_id, message.from_user.id)
+    if owner:
+        await message.reply(config.ta("channel_taken", owner=owner))
+        return
+    await message.reply(config.ta("channel_added", channel_id=channel_id, mention=contact.mention))
+
+
 @router.message(Command("revocar"), F.chat.id == config.ADMIN_GROUP_ID)
 async def cmd_revoke(message: Message, bot: Bot) -> None:
     user_id = await _topic_user(message, bot)
