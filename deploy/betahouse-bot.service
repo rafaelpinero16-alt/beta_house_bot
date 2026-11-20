@@ -1,0 +1,21 @@
+[Unit]
+Description=BETA HOUSE VIP Bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=bot
+WorkingDirectory=/opt/beta_house_bot
+ExecStart=/opt/beta_house_bot/.venv/bin/python bot.py
+Restart=always
+RestartSec=5
+# Error de configuración (.env o permisos): no reintentar en bucle
+RestartPreventExitStatus=78
+# Endurecimiento básico
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target
